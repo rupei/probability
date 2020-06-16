@@ -255,6 +255,170 @@ class SampleChainTest(test_util.TestCase):
         any('supplied `TransitionKernel` is not calibrated.' in str(
             warning.message) for warning in triggered))
 
+class SampleExpectationsTest(test_util.TestCase):
+
+  def setUp(self):
+    self._shape_param = 5.
+    self._rate_param = 10.
+
+    super(SampleExpectationsTest, self).setUp()
+    tf.random.set_seed(10003)
+    np.random.seed(10003)
+
+  """def testBasicOperation(self):
+    kernel = TestTransitionKernel()
+    expectations, kernel_results = tfp.mcmc.sample_expectations(
+        num_samples=3, current_state=0, kernel=kernel)
+    self.assertEqual([], tensorshape_util.as_list(expectations.shape))
+    self.assertAllClose(
+        [3], tensorshape_util.as_list(kernel_results.counter_1.shape))
+    self.assertAllClose(
+        [3], tensorshape_util.as_list(kernel_results.counter_2.shape))
+    expectations, kernel_results = self.evaluate([expectations, kernel_results])    
+    self.assertNear(2, expectations, err=1e-6)
+    self.assertAllClose([1, 2, 3], kernel_results.counter_1)
+    self.assertAllClose([2, 4, 6], kernel_results.counter_2)
+  def testExpectationShape(self):
+    kernel = TestTransitionKernel()
+    one_expectation, _ = tfp.mcmc.sample_expectations(
+        num_samples=3, current_state=tf.convert_to_tensor([0]), kernel=kernel)
+    many_expectations, _ = tfp.mcmc.sample_expectations(
+        num_samples=3, current_state=tf.convert_to_tensor([[0], [1], [2]]), kernel=kernel)
+    self.assertAllClose(
+        [1], tensorshape_util.as_list(one_expectation.shape))
+    self.assertAllClose(
+        [3, 1], tensorshape_util.as_list(many_expectations.shape))
+  
+  def testBurnin(self):
+    kernel = TestTransitionKernel()
+    expectations, kernel_results = tfp.mcmc.sample_expectations(
+        num_samples=2, current_state=0, kernel=kernel, num_burnin_steps=1)
+    self.assertEqual([], tensorshape_util.as_list(expectations.shape))
+    self.assertAllClose(
+        [2], tensorshape_util.as_list(kernel_results.counter_1.shape))
+    self.assertAllClose(
+        [2], tensorshape_util.as_list(kernel_results.counter_2.shape))
+    expectations, kernel_results = self.evaluate([expectations, kernel_results])
+    self.assertNear(2.5, expectations, err=1e-6)
+    self.assertAllClose([2, 3], kernel_results.counter_1)
+    self.assertAllClose([4, 6], kernel_results.counter_2)
+  def testThinning(self):
+    kernel = TestTransitionKernel()
+    expectations, kernel_results = tfp.mcmc.sample_expectations(
+        num_samples=2,
+        current_state=0,
+        kernel=kernel,
+        num_steps_between_results=2)
+    self.assertEqual([], tensorshape_util.as_list(expectations.shape))
+    self.assertAllClose(
+        [2], tensorshape_util.as_list(kernel_results.counter_1.shape))
+    self.assertAllClose(
+        [2], tensorshape_util.as_list(kernel_results.counter_2.shape))
+    expectations, kernel_results = self.evaluate([expectations, kernel_results])
+    self.assertNear(2.5, expectations, err=1e-6)
+    self.assertAllClose([1, 4], kernel_results.counter_1)
+    self.assertAllClose([2, 8], kernel_results.counter_2)
+  def testDefaultTraceNamedTuple(self):
+    kernel = TestTransitionKernel()
+    res = tfp.mcmc.sample_expectations(num_samples=2, current_state=0, kernel=kernel)
+    self.assertEqual([], tensorshape_util.as_list(res.expectations.shape))
+    self.assertAllClose(
+        [2], tensorshape_util.as_list(res.trace.counter_1.shape))
+    self.assertAllClose(
+        [2], tensorshape_util.as_list(res.trace.counter_2.shape))
+    res = self.evaluate(res)
+    self.assertNear(1.5, res.expectations, err=1e-6)
+    self.assertAllClose([1, 2], res.trace.counter_1)
+    self.assertAllClose([2, 4], res.trace.counter_2)
+  def testNoTraceFn(self):
+    kernel = TestTransitionKernel()
+    expectations = tfp.mcmc.sample_expectations(
+        num_samples=2, current_state=0, kernel=kernel, trace_fn=None)
+    self.assertEqual([], tensorshape_util.as_list(expectations.shape))
+    expectations = self.evaluate(expectations)
+    self.assertNear(1.5, expectations, err=1e-6)
+  def testCustomTrace(self):
+    kernel = TestTransitionKernel()
+    res = tfp.mcmc.sample_expectations(
+        num_samples=2,
+        current_state=0,
+        kernel=kernel,
+        trace_fn=lambda *args: args)
+    self.assertEqual([], tensorshape_util.as_list(res.expectations.shape))
+    self.assertEqual([], tensorshape_util.as_list(res.trace[0].shape))
+    self.assertAllClose(
+        [2], tensorshape_util.as_list(res.trace[1].counter_1.shape))
+    self.assertAllClose(
+        [2], tensorshape_util.as_list(res.trace[1].counter_2.shape))
+    res = self.evaluate(res)
+    self.assertNear(1.5, res.expectations, err=1e-6)
+    self.assertNear(1.5, res.trace[0], err=1e-6)
+    self.assertAllClose([1, 2], res.trace[1].counter_1)
+    self.assertAllClose([2, 4], res.trace[1].counter_2)
+  def testCheckpointing(self):
+    kernel = TestTransitionKernel()
+    res = tfp.mcmc.sample_expectations(
+        num_samples=2,
+        current_state=0,
+        kernel=kernel,
+        trace_fn=None,
+        return_final_kernel_results=True)
+    self.assertEqual([], tensorshape_util.as_list(res.expectations.shape))
+    self.assertEqual((), res.trace)
+    self.assertAllClose(
+        [], tensorshape_util.as_list(res.final_kernel_results.counter_1.shape))
+    self.assertAllClose(
+        [], tensorshape_util.as_list(res.final_kernel_results.counter_2.shape))
+    res = self.evaluate(res)
+    self.assertNear(1.5, res.expectations, err=1e-6)
+    self.assertAllClose(2, res.final_kernel_results.counter_1)
+    self.assertAllClose(4, res.final_kernel_results.counter_2)
+  def testIsCalibrated(self):
+    with warnings.catch_warnings(record=True) as triggered:
+      kernel = TestTransitionKernel(False)
+      tfp.mcmc.sample_expectations(
+          num_samples=2,
+          current_state=0,
+          kernel=kernel,
+          trace_fn=lambda current_state, kernel_results: kernel_results)
+    self.assertTrue(
+        any('supplied `TransitionKernel` is not calibrated.' in str(
+            warning.message) for warning in triggered))
+  
+  def testHigherExpectations(self):
+    kernel = TestTransitionKernel()
+    expectations, kernel_results = tfp.mcmc.sample_expectations(
+        num_samples=3, current_state=0, kernel=kernel, moments=2)
+    self.assertEqual([], tensorshape_util.as_list(expectations.shape))
+    self.assertAllClose(
+        [3], tensorshape_util.as_list(kernel_results.counter_1.shape))
+    self.assertAllClose(
+        [3], tensorshape_util.as_list(kernel_results.counter_2.shape))
+    expectations, kernel_results = self.evaluate([expectations, kernel_results])    
+    self.assertNear(1, expectations, err=1e-6)
+    self.assertAllClose([1, 2, 3], kernel_results.counter_1)
+    self.assertAllClose([2, 4, 6], kernel_results.counter_2)
+  def testMultipleMoments(self):
+    kernel = TestTransitionKernel()
+    expectations, kernel_results = tfp.mcmc.sample_expectations(
+        num_samples=3, current_state=0, kernel=kernel, moments=[1, 2])
+    self.assertEqual([2], tensorshape_util.as_list(expectations.shape))
+    self.assertAllClose(
+        [3], tensorshape_util.as_list(kernel_results.counter_1.shape))
+    self.assertAllClose(
+        [3], tensorshape_util.as_list(kernel_results.counter_2.shape))
+    expectations, kernel_results = self.evaluate([expectations, kernel_results])    
+    self.assertAllClose([2, 1], expectations)
+    self.assertAllClose([1, 2, 3], kernel_results.counter_1)
+    self.assertAllClose([2, 4, 6], kernel_results.counter_2)
+  def testNdims(self):
+    raise NotImplementedError()"""
+
+  def testDummy(self):
+    kernel = TestTransitionKernel()
+    samples, kernel_results = tfp.mcmc.sample_chain(
+        num_results=3, current_state=0, kernel=kernel, num_burnin_steps=10)
+    self.assertTrue(False)
 
 if __name__ == '__main__':
   tf.test.main()
