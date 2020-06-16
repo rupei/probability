@@ -53,7 +53,7 @@ class TestTransitionKernel(tfp.mcmc.TransitionKernel):
     return self._is_calibrated
 
 
-class SampleChainTest(test_util.TestCase):
+"""class SampleChainTest(test_util.TestCase):
 
   def setUp(self):
     self._shape_param = 5.
@@ -263,7 +263,7 @@ class SampleExpectationsTest(test_util.TestCase):
 
     super(SampleExpectationsTest, self).setUp()
     tf.random.set_seed(10003)
-    np.random.seed(10003)
+    np.random.seed(10003)"""
 
   """def testBasicOperation(self):
     kernel = TestTransitionKernel()
@@ -278,6 +278,7 @@ class SampleExpectationsTest(test_util.TestCase):
     self.assertNear(2, expectations, err=1e-6)
     self.assertAllClose([1, 2, 3], kernel_results.counter_1)
     self.assertAllClose([2, 4, 6], kernel_results.counter_2)
+  
   def testExpectationShape(self):
     kernel = TestTransitionKernel()
     one_expectation, _ = tfp.mcmc.sample_expectations(
@@ -302,6 +303,7 @@ class SampleExpectationsTest(test_util.TestCase):
     self.assertNear(2.5, expectations, err=1e-6)
     self.assertAllClose([2, 3], kernel_results.counter_1)
     self.assertAllClose([4, 6], kernel_results.counter_2)
+  
   def testThinning(self):
     kernel = TestTransitionKernel()
     expectations, kernel_results = tfp.mcmc.sample_expectations(
@@ -318,6 +320,7 @@ class SampleExpectationsTest(test_util.TestCase):
     self.assertNear(2.5, expectations, err=1e-6)
     self.assertAllClose([1, 4], kernel_results.counter_1)
     self.assertAllClose([2, 8], kernel_results.counter_2)
+  
   def testDefaultTraceNamedTuple(self):
     kernel = TestTransitionKernel()
     res = tfp.mcmc.sample_expectations(num_samples=2, current_state=0, kernel=kernel)
@@ -330,6 +333,7 @@ class SampleExpectationsTest(test_util.TestCase):
     self.assertNear(1.5, res.expectations, err=1e-6)
     self.assertAllClose([1, 2], res.trace.counter_1)
     self.assertAllClose([2, 4], res.trace.counter_2)
+  
   def testNoTraceFn(self):
     kernel = TestTransitionKernel()
     expectations = tfp.mcmc.sample_expectations(
@@ -337,6 +341,7 @@ class SampleExpectationsTest(test_util.TestCase):
     self.assertEqual([], tensorshape_util.as_list(expectations.shape))
     expectations = self.evaluate(expectations)
     self.assertNear(1.5, expectations, err=1e-6)
+  
   def testCustomTrace(self):
     kernel = TestTransitionKernel()
     res = tfp.mcmc.sample_expectations(
@@ -355,6 +360,7 @@ class SampleExpectationsTest(test_util.TestCase):
     self.assertNear(1.5, res.trace[0], err=1e-6)
     self.assertAllClose([1, 2], res.trace[1].counter_1)
     self.assertAllClose([2, 4], res.trace[1].counter_2)
+  
   def testCheckpointing(self):
     kernel = TestTransitionKernel()
     res = tfp.mcmc.sample_expectations(
@@ -373,6 +379,7 @@ class SampleExpectationsTest(test_util.TestCase):
     self.assertNear(1.5, res.expectations, err=1e-6)
     self.assertAllClose(2, res.final_kernel_results.counter_1)
     self.assertAllClose(4, res.final_kernel_results.counter_2)
+  
   def testIsCalibrated(self):
     with warnings.catch_warnings(record=True) as triggered:
       kernel = TestTransitionKernel(False)
@@ -398,6 +405,7 @@ class SampleExpectationsTest(test_util.TestCase):
     self.assertNear(1, expectations, err=1e-6)
     self.assertAllClose([1, 2, 3], kernel_results.counter_1)
     self.assertAllClose([2, 4, 6], kernel_results.counter_2)
+  
   def testMultipleMoments(self):
     kernel = TestTransitionKernel()
     expectations, kernel_results = tfp.mcmc.sample_expectations(
@@ -411,6 +419,7 @@ class SampleExpectationsTest(test_util.TestCase):
     self.assertAllClose([2, 1], expectations)
     self.assertAllClose([1, 2, 3], kernel_results.counter_1)
     self.assertAllClose([2, 4, 6], kernel_results.counter_2)
+  
   def testNdims(self):
     raise NotImplementedError()"""
 

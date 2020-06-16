@@ -370,3 +370,104 @@ def sample_chain(
         return all_states
       else:
         return StatesAndTrace(all_states=all_states, trace=trace)
+
+
+def sample_scan(
+    num_samples,  # scalar int
+    current_state,  # scalar float, Python List, or Tensor of floats/Lists
+    body_fn,
+    initial_val,  # initial value for the scan
+    reduction_fn,
+    kernel=None,
+    num_burnin_steps=0,
+    num_steps_between_results=0,
+    trace_fn=lambda current_state, kernel_results: kernel_results,
+    return_final_kernel_results=False,
+    parallel_iterations=10,
+    name=None,
+):
+  if not kernel.is_calibrated:
+    warnings.warn("supplied `TransitionKernel` is not calibrated. Markov "
+                  "chain may not converge to intended target distribution.")
+  with tf.name_scope(name or "mcmc_sample_chain"):
+    num_results = tf.convert_to_tensor(
+        num_samples, dtype=tf.int32, name="num_results")
+    num_burnin_steps = tf.convert_to_tensor(
+        num_burnin_steps, dtype=tf.int32, name="num_burnin_steps")
+    num_steps_between_results = tf.convert_to_tensor(
+        num_steps_between_results,
+        dtype=tf.int32,
+        name="num_steps_between_results")
+    current_state = tf.nest.map_structure(
+        lambda x: tf.convert_to_tensor(x, name="current_state"),
+        current_state)
+    if previous_kernel_results is None:
+      previous_kernel_results = kernel.bootstrap_results(current_state)
+
+    if trace_fn is None:
+      # It simplifies the logic to use a dummy function here.
+      trace_fn = lambda *args: ()
+      no_trace = True
+    else:
+      no_trace = False
+    if trace_fn is sample_chain.__defaults__[4]:
+      warnings.warn("Tracing all kernel results by default is deprecated. Set "
+                    "the `trace_fn` argument to None (the future default "
+                    "value) or an explicit callback that traces the values "
+                    "you are interested in.")
+
+    def _trace_scan_fn(state_and_results, num_steps):
+      next_state, current_kernel_results = mcmc_util.smart_for_loop(
+          loop_num_iter=num_steps,
+          body_fn=kernel.one_step,
+          initial_loop_vars=list(state_and_results),
+          parallel_iterations=parallel_iterations)
+          # TODO 1: edit this so that it isn't next_state that's being returned,
+          # but our running_total
+      return next_state, current_kernel_results
+
+    (_, final_kernel_results), (all_states, trace) = mcmc_util.trace_scan(
+        loop_fn=_trace_scan_fn,
+        initial_state=(current_state, previous_kernel_results),
+        elems=tf.one_hot(
+            indices=0,
+            depth=num_results,
+            on_value=1 + num_burnin_steps,
+            off_value=1 + num_steps_between_results,
+            dtype=tf.int32),
+        # the first element we want isn't the state, but the running total
+        # TODO 2: we don't want to pack the results in trace_scan
+        # this may involve adding an extra param to trace_scan for packing
+        # pylint: disable=g-long-lambda
+        trace_fn=lambda state_and_results: (state_and_results[0],
+                                            trace_fn(*state_and_results)),
+        # pylint: enable=g-long-lambda
+        parallel_iterations=parallel_iterations)
+
+    if return_final_kernel_results:
+      return CheckpointableStatesAndTrace(
+          all_states=all_states,
+          trace=trace,
+          final_kernel_results=final_kernel_results)
+    else:
+      if no_trace:
+        return all_states
+      else:
+        return StatesAndTrace(all_states=all_states, trace=trace)
+
+
+def sample_raw_moments(
+    num_samples, 	# scalar int
+    current_state,	# tf.nest of Tensors
+    expectation_fn=lambda x: x,
+    moments=1,      # scalar int or Python List of ints
+    kernel=None,
+    ndims=0,		# tf.nest of scalar int
+    num_burnin_steps=0,
+    num_steps_between_results=0,
+    trace_fn=lambda current_state, kernel_results: kernel_results,
+    return_final_kernel_results=False,
+    parallel_iterations=10,
+    name=None,
+):
+  
