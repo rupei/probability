@@ -253,7 +253,7 @@ class TestTransitionKernel(tfp.mcmc.TransitionKernel):
           trace_fn=lambda current_state, kernel_results: kernel_results)
     self.assertTrue(
         any('supplied `TransitionKernel` is not calibrated.' in str(
-            warning.message) for warning in triggered))
+            warning.message) for warning in triggered))"""
 
 class SampleExpectationsTest(test_util.TestCase):
 
@@ -263,7 +263,7 @@ class SampleExpectationsTest(test_util.TestCase):
 
     super(SampleExpectationsTest, self).setUp()
     tf.random.set_seed(10003)
-    np.random.seed(10003)"""
+    np.random.seed(10003)
 
   """def testBasicOperation(self):
     kernel = TestTransitionKernel()
@@ -425,9 +425,17 @@ class SampleExpectationsTest(test_util.TestCase):
 
   def testDummy(self):
     kernel = TestTransitionKernel()
-    samples, kernel_results = tfp.mcmc.sample_chain(
-        num_results=3, current_state=0, kernel=kernel, num_burnin_steps=10)
-    self.assertTrue(False)
+    expectations, kernel_results = tfp.mcmc.sample_scan(
+        num_samples=3,
+        current_state=0.,
+        body_fn=lambda x, y: x + y,
+        reduction_fn=lambda x: x / 3,
+        initial_val=0,
+        kernel=kernel,)
+    expectations, kernel_results = self.evaluate([expectations, kernel_results])
+    self.assertNear(7/3, expectations, err=1e-6)
+    self.assertAllClose([1, 2, 3], kernel_results.counter_1)
+    self.assertAllClose([2, 4, 6], kernel_results.counter_2)
 
 if __name__ == '__main__':
   tf.test.main()

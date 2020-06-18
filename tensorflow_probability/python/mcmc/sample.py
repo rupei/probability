@@ -373,11 +373,12 @@ def sample_chain(
 
 
 def sample_scan(
-    num_samples,  # scalar int
+    num_samples,    # scalar int
     current_state,  # scalar float, Python List, or Tensor of floats/Lists
     body_fn,
-    initial_val,  # initial value for the scan
+    initial_val,    # initial value for the scan
     reduction_fn,
+    previous_kernel_results=None,
     kernel=None,
     num_burnin_steps=0,
     num_steps_between_results=0,
@@ -422,13 +423,14 @@ def sample_scan(
           body_fn=kernel.one_step,
           initial_loop_vars=list(state_and_results),
           parallel_iterations=parallel_iterations)
-          # TODO 1: edit this so that it isn't next_state that's being returned,
-          # but our running_total
-      return next_state, current_kernel_results
+      # TODO 1: will probably want to create another named tuple for 
+      # state, stat, and kernel results
+      updated_total = body_fn(state_and_results[0], next_state)
+      return updated_total, current_kernel_results
 
-    (_, final_kernel_results), (all_states, trace) = mcmc_util.trace_scan(
+    (_, final_kernel_results), (expectations, trace) = mcmc_util.trace_scan(
         loop_fn=_trace_scan_fn,
-        initial_state=(current_state, previous_kernel_results),
+        initial_state=(initial_val, previous_kernel_results),
         elems=tf.one_hot(
             indices=0,
             depth=num_results,
@@ -444,25 +446,27 @@ def sample_scan(
         # pylint: enable=g-long-lambda
         parallel_iterations=parallel_iterations)
 
+    reduced_total = reduction_fn(expectations[-1])
     if return_final_kernel_results:
       return CheckpointableStatesAndTrace(
-          all_states=all_states,
+          all_states=reduced_total,
           trace=trace,
           final_kernel_results=final_kernel_results)
     else:
       if no_trace:
-        return all_states
+        return reduced_total
       else:
-        return StatesAndTrace(all_states=all_states, trace=trace)
+        return StatesAndTrace(all_states=reduced_total, trace=trace)
 
 
 def sample_raw_moments(
-    num_samples, 	# scalar int
+    num_samples, 	  # scalar int
     current_state,	# tf.nest of Tensors
     expectation_fn=lambda x: x,
     moments=1,      # scalar int or Python List of ints
+    previous_kernel_results=None,
     kernel=None,
-    ndims=0,		# tf.nest of scalar int
+    ndims=0,		    # tf.nest of scalar int
     num_burnin_steps=0,
     num_steps_between_results=0,
     trace_fn=lambda current_state, kernel_results: kernel_results,
@@ -470,4 +474,19 @@ def sample_raw_moments(
     parallel_iterations=10,
     name=None,
 ):
-  
+  def body_fn(old_total, new_sample):
+    # old_total will be a list (moments) of list (expectation_fn) of tensors
+    # new_sample will be a Tensor
+    for i, expectation in enumerate(old_total):
+      old_total[i] = expectation + new_sample[i]
+    return old_total
+
+  reduction_fn = lambda x: x / num_samples
+  if isinstance(moments, list):
+    moments_len = len(moments)
+  else:
+    moments_len = None
+  initial_val = [0 for _ in range(moments_len)]
+
+  expectations = sample_scan(num_samples, current_state, body_fn, initial_val, reduction_fn)
+  return expectations

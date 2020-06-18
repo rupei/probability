@@ -38,6 +38,7 @@ from tensorflow_probability.python.mcmc.replica_exchange_mc import ReplicaExchan
 from tensorflow_probability.python.mcmc.sample import CheckpointableStatesAndTrace
 from tensorflow_probability.python.mcmc.sample import sample_chain
 from tensorflow_probability.python.mcmc.sample import StatesAndTrace
+from tensorflow_probability.python.mcmc.sample import sample_scan
 from tensorflow_probability.python.mcmc.sample_annealed_importance import sample_annealed_importance_chain
 from tensorflow_probability.python.mcmc.sample_halton_sequence import sample_halton_sequence
 from tensorflow_probability.python.mcmc.simple_step_size_adaptation import SimpleStepSizeAdaptation
@@ -69,5 +70,6 @@ __all__ = [
     'random_walk_uniform_fn',
     'sample_annealed_importance_chain',
     'sample_chain',
+    'sample_scan',
     'sample_halton_sequence',
 ]
